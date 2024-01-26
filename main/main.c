@@ -19,13 +19,12 @@
 #include "mdns.h"
 #include "lwip/apps/netbiosns.h"
 
-#define MDNS_INSTANCE "esp home web server"
-#define WEB_MOUNT_POINT "/www"
-#define MDNS_HOST_NAME "rt-ctrl"
+#include "smartconfig.h"
+#include "rmt.h"
+#include "main.h"
+#include "http_server.h"
 
 static const char *TAG = "example";
-
-esp_err_t start_rest_server(const char *base_path);
 
 static void initialise_mdns(void)
 {
@@ -81,7 +80,19 @@ void app_main(void)
     netbiosns_init();
     netbiosns_set_name(MDNS_HOST_NAME);
 
-    // ESP_ERROR_CHECK(example_connect());
+    // smart config 配网
+    initialise_wifi();
+
+    // 红外遥控
+    initialise_rmt();
+
     ESP_ERROR_CHECK(init_fs());
-    ESP_ERROR_CHECK(start_rest_server(WEB_MOUNT_POINT));
+    ESP_ERROR_CHECK(start_rest_server());
+
+    while (1)
+    {
+        // 输出当前内存使用情况
+        ESP_LOGI("MEM", "Free: %lu, Ext Free: %lu", esp_get_free_internal_heap_size(), esp_get_free_heap_size() - esp_get_free_internal_heap_size());
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+    }
 }
