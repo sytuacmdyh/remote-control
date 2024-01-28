@@ -295,7 +295,8 @@ static esp_err_t system_info_get_handler(httpd_req_t *req)
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     esp_netif_ip_info_t ip_info;
     esp_netif_get_ip_info(netif, &ip_info);
-    cJSON_AddStringToObject(data, "ip", ip4addr_ntoa(&ip_info.ip));
+    esp_ip4addr_ntoa(&ip_info.ip, scratch, sizeof(scratch));
+    cJSON_AddStringToObject(data, "ip", scratch);
     cJSON *root = get_success_response(data);
     return send_json(req, root);
 }

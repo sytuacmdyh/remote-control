@@ -1,86 +1,61 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import { RouterView } from 'vue-router'
+import { ref } from 'vue'
+import { useErrorStore } from '@/stores/error'
+import { storeToRefs } from 'pinia'
+
+const errorStore = useErrorStore()
+const { errorMessage, snackbar, timeout } = storeToRefs(errorStore)
+const { showError } = errorStore
+
+const drawer = ref(false)
+
+const reboot = () => {
+  showError('暂不支持重启')
+}
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
+  <v-app>
+    <v-app-bar color="primary">
+      <template v-slot:prepend>
+        <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
+      </template>
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+      <v-app-bar-title>智能红外遥控管理后台</v-app-bar-title>
 
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-    <!-- <v-card text="..."></v-card> -->
-  </header>
+      <template v-slot:append>
+        <v-btn>
+          <v-icon icon="mdi-dots-vertical"></v-icon>
+          <v-menu activator="parent">
+            <v-list>
+              <v-list-item title="重启" @click="reboot"> </v-list-item>
+            </v-list>
+          </v-menu>
+          <v-snackbar v-model="snackbar" :timeout="timeout">
+            {{ errorMessage }}
 
-  <RouterView />
+            <template v-slot:actions>
+              <v-btn color="white" variant="text" @click="snackbar = false"> X </v-btn>
+            </template>
+          </v-snackbar>
+        </v-btn>
+      </template>
+    </v-app-bar>
+
+    <v-navigation-drawer v-model="drawer" temporary>
+      <v-list nav>
+        <v-list-item to="/" title="控制台" prepend-icon="mdi-home"></v-list-item>
+        <v-list-item to="/device" title="设备" prepend-icon="mdi-devices"></v-list-item>
+      </v-list>
+    </v-navigation-drawer>
+
+    <v-main>
+      <!-- <v-container> -->
+      <RouterView />
+      <!-- </v-container> -->
+    </v-main>
+  </v-app>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
-}
-</style>
+<style scoped></style>
