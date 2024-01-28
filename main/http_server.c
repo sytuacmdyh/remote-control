@@ -14,6 +14,7 @@
 #include "freertos/timers.h"
 #include "nvs_flash.h"
 #include "nvs.h"
+#include "esp_netif.h"
 
 #include "main.h"
 
@@ -290,6 +291,11 @@ static esp_err_t system_info_get_handler(httpd_req_t *req)
     cJSON_AddStringToObject(data, "version", FIRMWARE_VERSION);
     cJSON_AddStringToObject(data, "chip", "ESP32-S3");
     cJSON_AddStringToObject(data, "sdk", esp_get_idf_version());
+
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    esp_netif_ip_info_t ip_info;
+    esp_netif_get_ip_info(netif, &ip_info);
+    cJSON_AddStringToObject(data, "ip", ip4addr_ntoa(&ip_info.ip));
     cJSON *root = get_success_response(data);
     return send_json(req, root);
 }
