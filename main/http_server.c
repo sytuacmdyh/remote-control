@@ -117,6 +117,41 @@ esp_err_t get_device_list(httpd_req_t *req)
     return send_json(req, get_success_response(data));
 }
 
+esp_err_t get_device_detail(httpd_req_t *req)
+{
+    // 从url中获取设备名称
+    char *device_name = req->uri + strlen("/api/rmt/getDeviceDetail?name=");
+    if (device_name == NULL)
+    {
+        return send_json(req, get_fail_response("device name not null"));
+    }
+    for (int i = 0; i < MAX_DEVICE_LEN; i++)
+    {
+        if (strcmp(devices[i].name, device_name) == 0)
+        {
+            cJSON *data = cJSON_CreateObject();
+            cJSON_AddStringToObject(data, "name", devices[i].name);
+            cJSON_AddStringToObject(data, "product", devices[i].product);
+            cJSON *actions = cJSON_CreateArray();
+            for (int j = 0; j < MAX_ACTION_LEN; j++)
+            {
+                if (devices[i].actions[j].name[0] == 0)
+                {
+                    continue;
+                }
+                cJSON *action = cJSON_CreateObject();
+                cJSON_AddStringToObject(action, "name", devices[i].actions[j].name);
+                cJSON_AddNumberToObject(action, "addr", devices[i].actions[j].cmd.address);
+                cJSON_AddNumberToObject(action, "cmd", devices[i].actions[j].cmd.command);
+                cJSON_AddItemToArray(actions, action);
+            }
+            cJSON_AddItemToObject(data, "actions", actions);
+            return send_json(req, get_success_response(data));
+        }
+    }
+    return send_json(req, get_fail_response("device not found"));
+}
+
 esp_err_t bind_action(char *device_name, char *action_name, ir_nec_scan_code_t cmd)
 {
     if (device_name == NULL || action_name == NULL)
@@ -127,6 +162,17 @@ esp_err_t bind_action(char *device_name, char *action_name, ir_nec_scan_code_t c
     {
         if (strcmp(devices[i].name, device_name) == 0)
         {
+            // 先找是否有重名的动作
+            for (int j = 0; j < MAX_ACTION_LEN; j++)
+            {
+                if (strcmp(devices[i].actions[j].name, action_name) == 0)
+                {
+                    devices[i].actions[j].cmd = cmd;
+                    device_list_changed = true;
+                    return ESP_OK;
+                }
+            }
+            // 再找空位
             for (int j = 0; j < MAX_ACTION_LEN; j++)
             {
                 if (devices[i].actions[j].name[0] == 0)
@@ -409,9 +455,7 @@ esp_err_t start_rest_server()
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-
-    save_timer = xTimerCreate("save_timer", pdMS_TO_TICKS(30000), pdFALSE, (void *)0, save_timer_callback);
-    REST_CHECK(save_timer != NULL, "create save timer failed", err);
+    config.max_uri_handlers = 20;
 
     ESP_LOGI(REST_TAG, "Starting HTTP Server");
     REST_CHECK(httpd_start(&server, &config) == ESP_OK, "Start server failed", err);
@@ -422,6 +466,10 @@ esp_err_t start_rest_server()
     size_t len = sizeof(devices);
     ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_get_blob(nvs_handle, "devices", devices, &len));
     nvs_close(nvs_handle);
+
+    save_timer = xTimerCreate("save_timer", pdMS_TO_TICKS(30000), pdTRUE, (void *)0, save_timer_callback);
+    REST_CHECK(save_timer != NULL, "create save timer failed", err);
+    xTimerStart(save_timer, 0);
 
     // 获取设备信息
     httpd_register_uri_handler(server, &(httpd_uri_t){
@@ -456,6 +504,13 @@ esp_err_t start_rest_server()
                                            .uri = "/api/rmt/getDeviceList",
                                            .method = HTTP_GET,
                                            .handler = get_device_list,
+                                       });
+
+    // 获取设备详情
+    httpd_register_uri_handler(server, &(httpd_uri_t){
+                                           .uri = "/api/rmt/getDeviceDetail",
+                                           .method = HTTP_GET,
+                                           .handler = get_device_detail,
                                        });
 
     // 绑定动作

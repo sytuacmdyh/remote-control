@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { http_get, http_post } from '../request'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const devices = reactive([])
 const deviceName = ref('')
@@ -14,6 +17,10 @@ const rules = [
 ]
 
 const refreshDevices = () => {
+  // devices.push({
+  //   name: '电灯',
+  //   product: '电灯'
+  // })
   http_get('/api/rmt/getDeviceList').then((data) => {
     devices.splice(0, devices.length, ...data)
   })
@@ -62,6 +69,10 @@ onMounted(() => {
       <v-col v-for="device in devices" :key="device.name" sm="6" md="3">
         <v-card class="elevation-9" :title="device.name" :subtitle="device.product">
           <v-card-actions>
+            <v-btn
+              icon="mdi-pencil"
+              @click="router.push({ name: 'device-detail', params: { name: device.name } })"
+            ></v-btn>
             <v-btn class="red" icon="mdi-delete" @click="deleteDevice(device.name)"></v-btn>
           </v-card-actions>
         </v-card>

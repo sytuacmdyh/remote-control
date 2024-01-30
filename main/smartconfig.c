@@ -22,8 +22,22 @@ static EventGroupHandle_t s_wifi_event_group;
 static const int CONNECTED_BIT = BIT0;
 static const int ESPTOUCH_DONE_BIT = BIT1;
 static const char *TAG = "smartconfig_example";
+static bool is_smartconfig_started = false;
 
 static void smartconfig_example_task(void *parm);
+
+void start_smartconfig(void)
+{
+    // 检查是否已开启smartconfig
+    if (is_smartconfig_started)
+    {
+        ESP_LOGI(TAG, "SmartConfig is already started");
+        return;
+    }
+    // 开启smartconfig
+    ESP_LOGI(TAG, "SmartConfig start");
+    xTaskCreate(smartconfig_example_task, "smartconfig_example_task", 4096, NULL, 3, NULL);
+}
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
@@ -58,7 +72,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         else
         {
             ESP_LOGI(TAG, "Stored WiFi Credentials not found, starting SmartConfig");
-            xTaskCreate(smartconfig_example_task, "smartconfig_example_task", 4096, NULL, 3, NULL);
+            start_smartconfig();
         }
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
@@ -149,6 +163,7 @@ void initialise_wifi(void)
 static void smartconfig_example_task(void *parm)
 {
     EventBits_t uxBits;
+    is_smartconfig_started = true;
     ESP_ERROR_CHECK(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH));
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_smartconfig_start(&cfg));
@@ -163,6 +178,7 @@ static void smartconfig_example_task(void *parm)
         {
             ESP_LOGI(TAG, "smartconfig over");
             esp_smartconfig_stop();
+            is_smartconfig_started = false;
             vTaskDelete(NULL);
         }
     }
