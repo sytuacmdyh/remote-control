@@ -2,19 +2,21 @@
 import { onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDeviceStore } from '@/stores/device'
-// import { storeToRefs } from 'pinia'
+import { http_post } from '@/request';
 
 const deviceStore = useDeviceStore()
 const { device, actionsAll, setDevice, bindAction, getRecentCommands } = deviceStore
-// const { actionsAll } = storeToRefs(deviceStore)
 
 const recentCommands = reactive([])
 
-const refreshRecentCommands = () => {
-  getRecentCommands().then((data) => {
+const doAction = (deviceName, actionName) => http_post('/api/rmt/doAction', {
+  device: deviceName,
+  action: actionName,
+})
+
+const refreshRecentCommands = () => getRecentCommands().then((data) => {
     recentCommands.splice(0, recentCommands.length, ...data)
   })
-}
 
 const formatTimestamp = (timestamp_s) => {
   const date = new Date(timestamp_s * 1000)
@@ -62,6 +64,7 @@ onMounted(() => {
               label="指令"
             ></v-text-field>
             <v-btn type="submit" icon="mdi-check-bold"></v-btn>
+            <v-btn icon="mdi-send" @click="doAction(device.name, action.name)"></v-btn>
           </v-form>
         </v-card>
       </v-col>
